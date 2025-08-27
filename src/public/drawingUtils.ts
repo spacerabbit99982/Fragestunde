@@ -294,6 +294,9 @@ const createRafterDrawingInternal = (
     
     const drawingInfo = getDrawingInfo(drawingPolygon, RAFTER_W, dimensions, [], referenceLines);
     const finalBbox = drawingInfo.bbox;
+    if (!drawingInfo.dimensions) {
+        drawingInfo.dimensions = [];
+    }
     drawingInfo.dimensions.push( { type: 'linear_vertical', p1: { x: finalBbox.minX, y: finalBbox.minY }, p2: { x: finalBbox.minX, y: finalBbox.maxY }, offset: -55, label: `${(RAFTER_H * 100).toFixed(1)}cm` });
 
     return { drawingInfo, totalLength };
