@@ -1,7 +1,8 @@
 
 
 
-import express, { Express, Request, Response } from 'express';
+
+import * as express from 'express';
 import { GoogleGenAI, Type } from "@google/genai";
 import path from 'path';
 // FIX: Use fileURLToPath for robust __dirname discovery in ES modules.
@@ -15,7 +16,7 @@ import { generateGartenhausPlan } from './public/gartenhaus_construction.js';
 import { calculateDeflection } from './public/statics.js';
 
 // FIX: Added explicit type annotation for the express app.
-const app: Express = express();
+const app: express.Express = express();
 const port = process.env.PORT || 3000;
 
 // Middleware to parse JSON request bodies
@@ -29,7 +30,7 @@ app.use(express.static(publicPath));
 
 
 // API endpoint to handle the entire construction plan generation
-app.post('/api/generate', async (req: Request, res: Response) => {
+app.post('/api/generate', async (req: express.Request, res: express.Response) => {
     try {
         const { buildingType, dimensions, roofType, roofOverhang, roofPitch } = req.body;
         
@@ -278,7 +279,7 @@ ABSOLUTE ANFORDERUNG AN DEN OUTPUT: Liefern Sie NUR den JavaScript-Code-Body. KE
 });
 
 // Fallback route to serve the main HTML file for client-side routing.
-app.get('*', (req: Request, res: Response) => {
+app.get('*', (req: express.Request, res: express.Response) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
