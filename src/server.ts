@@ -1,6 +1,7 @@
 
-// FIX: Aliased Request and Response to avoid conflict with DOM types.
-import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+
+// FIX: Changed express import to use namespace access for Request and Response to avoid conflicts with DOM types.
+import express from 'express';
 import { GoogleGenAI, Type } from "@google/genai";
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,8 +25,7 @@ app.use(express.static(publicPath));
 
 
 // API endpoint to handle the entire construction plan generation
-// FIX: Used aliased ExpressRequest and ExpressResponse types.
-app.post('/api/generate', async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/api/generate', async (req: express.Request, res: express.Response) => {
     try {
         const { buildingType, dimensions, roofType, roofOverhang, roofPitch } = req.body;
         
@@ -173,9 +173,14 @@ ANFORDERUNGEN:
                 STUD_D: optimizedDims.studD, useKingPosts: optimizedDims.useKingPosts,
             };
             
-            const { partsList: tempList } = isGartenhausLike 
+            // FIX: Check for void return from plan generation to satisfy TypeScript compiler.
+            const tempPlanResult = isGartenhausLike
               ? generateGartenhausPlan(tempParams)
               : generateCarportPlan(tempParams);
+            if (!tempPlanResult) {
+                throw new Error("Intermediate plan generation failed to return data.");
+            }
+            const { partsList: tempList } = tempPlanResult;
             
             const checkedList = calculateDeflection(tempList, tempParams);
             const failedParts = checkedList.filter(p => p.statics && !p.statics.passed);
@@ -220,9 +225,14 @@ ABSOLUTE ANFORDERUNG AN DEN OUTPUT: Liefern Sie NUR den JavaScript-Code-Body. KE
           STUD_D: optimizedDims.studD, useKingPosts: optimizedDims.useKingPosts,
         };
         
-        const { mainModelCode, partsList: initialPartsList } = isGartenhausLike
+        // FIX: Check for void return from plan generation to satisfy TypeScript compiler.
+        const finalPlanResult = isGartenhausLike
           ? generateGartenhausPlan(finalModelParams)
           : generateCarportPlan(finalModelParams);
+        if (!finalPlanResult) {
+            throw new Error("Final plan generation failed to return data.");
+        }
+        const { mainModelCode, partsList: initialPartsList } = finalPlanResult;
 
         const finalPartsList: PartInfo[] = calculateDeflection(initialPartsList, finalModelParams);
 
@@ -276,8 +286,7 @@ ABSOLUTE ANFORDERUNG AN DEN OUTPUT: Liefern Sie NUR den JavaScript-Code-Body. KE
 });
 
 // Fallback route to serve the main HTML file for client-side routing.
-// FIX: Used aliased ExpressRequest and ExpressResponse types.
-app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
+app.get('*', (req: express.Request, res: express.Response) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
