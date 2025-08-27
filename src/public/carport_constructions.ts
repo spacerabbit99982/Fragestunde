@@ -810,4 +810,242 @@ export const generateCarportPlan = (params: {
             return { shape, angle: slope };
         };
         
-        const { shape
+        const { shape: rafterShape, angle: actualRafterAngle } = createSlopedRafterShape(middlePurlinInfoForPultRafter);
+        const rafterGeom = new THREE.ExtrudeGeometry(rafterShape, { depth: RAFTER_W, bevelEnabled: false });
+        rafterGeom.translate(0, 0, -RAFTER_W/2);
+        const rafterDistributionLength = D;
+        const numRafters = Math.max(2, Math.floor(rafterDistributionLength / 0.8) + 1);
+        const spacing = (numRafters > 1) ? (rafterDistributionLength - RAFTER_W) / (numRafters - 1) : 0;
+        const firstRafterZ = -rafterDistributionLength / 2 + RAFTER_W / 2;
+        
+        for (let i = 0; i < numRafters; i++) {
+            const zPos = firstRafterZ + i * spacing;
+            const rafter = new THREE.Mesh(rafterGeom.clone(), [createRafterMaterial(actualRafterAngle), endGrainMaterial]);
+            rafter.position.set(0, 0, zPos);
+            group.add(rafter);
+        }
+
+        // Traglatten (Horizontal Battens) for Pultdach
+        if (COUNTER_BATTEN_W > 0 && COUNTER_BATTEN_H > 0) {
+            const rafterSlopeHeight = RAFTER_H / cosA;
+            const y_top = (x) => rafterUndersideY(x) + rafterSlopeHeight;
+            const high_purlin_x_outer = high_post_x - BEAM_W / 2;
+            const low_purlin_x_outer = low_post_x + BEAM_W / 2;
+            const x_rafter_end_high = high_purlin_x_outer - roofOverhang;
+            const x_rafter_end_low = low_purlin_x_outer + roofOverhang;
+            
+            const p_high_end_top_vec = new THREE.Vector3(x_rafter_end_high, y_top(x_rafter_end_high), 0);
+            const p_low_end_top_vec = new THREE.Vector3(x_rafter_end_low, y_top(x_rafter_end_low), 0);
+            
+            const rafterLength = p_high_end_top_vec.distanceTo(p_low_end_top_vec);
+            const BATTEN_SPACING = 0.35;
+            const numRows = Math.ceil(rafterLength / BATTEN_SPACING);
+
+            const battenGeom = new THREE.BoxGeometry(COUNTER_BATTEN_W, COUNTER_BATTEN_H, D);
+            const battenMaterial = zAlignedElementMats;
+            
+            const slopeVec = new THREE.Vector3().subVectors(p_low_end_top_vec, p_high_end_top_vec).normalize();
+
+            for (let i = 0; i < numRows; i++) {
+                const distFromHighEnd = (i + 0.5) * BATTEN_SPACING;
+                if (distFromHighEnd > rafterLength) continue;
+
+                const pos = new THREE.Vector3().copy(p_high_end_top_vec).addScaledVector(slopeVec, distFromHighEnd);
+                
+                const normalVec = new THREE.Vector3(-(-slope), 1, 0).normalize();
+                pos.addScaledVector(normalVec, COUNTER_BATTEN_H / 2);
+
+                const batten = new THREE.Mesh(battenGeom.clone(), battenMaterial);
+                batten.position.copy(pos);
+                batten.rotation.z = -roofAngleRad;
+                group.add(batten);
+            }
+        }
+    }
+    
+    // --- START Dimensioning Code ---
+    const dimensionsGroup = new THREE.Group();
+    dimensionsGroup.name = "dimensionsGroup";
+    group.add(dimensionsGroup);
+
+    const createDimensionLabel = (text, position, options = {}) => {
+        const { bgColor = 'rgba(255, 255, 255, 0.85)', textColor = '#c0392b', fontSize = 48 } = options;
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const font = '500 ' + fontSize + 'px "Inter", sans-serif';
+        context.font = font;
+        const textMetrics = context.measureText(text);
+        const padding = { x: 20, y: 10 };
+        canvas.width = textMetrics.width + padding.x * 2;
+        canvas.height = fontSize + padding.y * 2;
+        context.fillStyle = bgColor;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.font = font;
+        context.fillStyle = textColor;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        texture.needsUpdate = true;
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(canvas.width / 150, canvas.height / 150, 1.0);
+        sprite.position.copy(position);
+        sprite.renderOrder = 999;
+        return sprite;
+    };
+
+    const createDimensionLine = (p1_world, p2_world, text, offsetDir_world, offsetDist, options = {}) => {
+        const { color = 0xc0392b, tickLength = 0.2, labelOffset = 0.25 } = options;
+        const dimGroup = new THREE.Group();
+        const lineMaterial = new THREE.LineBasicMaterial({ color: color, linewidth: 2, depthTest: false, depthWrite: false, transparent: true, opacity: 0.8 });
+        const p1 = p1_world.clone();
+        const p2 = p2_world.clone();
+        const offsetDir = offsetDir_world.clone().normalize();
+        const p1_dim = p1.clone().addScaledVector(offsetDir, offsetDist);
+        const p2_dim = p2.clone().addScaledVector(offsetDir, offsetDist);
+        dimGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1, p1_dim]), lineMaterial));
+        dimGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p2, p2_dim]), lineMaterial));
+        const lineDir = p2_dim.clone().sub(p1_dim).normalize();
+        const arrowMaterial = new THREE.MeshBasicMaterial({ color: color, depthTest: false, depthWrite: false, transparent: true, opacity: 0.8 });
+        const arrowGeom = new THREE.ConeGeometry(0.05, 0.2, 8);
+        arrowGeom.translate(0, -0.1, 0);
+        const arrow1 = new THREE.Mesh(arrowGeom, arrowMaterial);
+        arrow1.position.copy(p1_dim);
+        arrow1.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lineDir);
+        dimGroup.add(arrow1);
+        const arrow2 = new THREE.Mesh(arrowGeom, arrowMaterial);
+        arrow2.position.copy(p2_dim);
+        arrow2.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lineDir.clone().negate());
+        dimGroup.add(arrow2);
+        const lineStart = p1_dim.clone().addScaledVector(lineDir, 0.2);
+        const lineEnd = p2_dim.clone().addScaledVector(lineDir, -0.2);
+        dimGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([lineStart, lineEnd]), lineMaterial));
+        const labelPos = p1_dim.clone().add(p2_dim).multiplyScalar(0.5).addScaledVector(offsetDir, labelOffset);
+        dimGroup.add(createDimensionLabel(text, labelPos));
+        dimGroup.renderOrder = 999;
+        return dimGroup;
+    };
+
+    const offset_x_pos = new THREE.Vector3(1, 0, 0);
+    const offset_y_neg = new THREE.Vector3(0, -1, 0);
+    const offset_z_pos = new THREE.Vector3(0, 0, 1);
+    
+    if (roofType === 'Satteldach') {
+        const plateTopY = H;
+        const plateInnerX = post_center_x - plateWidth / 2;
+        const y_bottom = (x) => -tanA * (Math.abs(x) - plateInnerX) + plateTopY;
+        const rafterSlopeHeight = RAFTER_H / cosA;
+        const y_top = (x) => y_bottom(x) + rafterSlopeHeight;
+        const ridgeHeight = y_top(0);
+        
+        const ridgeNotchDepth = RAFTER_H / 3;
+        const ridgeSeatY = y_bottom(BEAM_W / 2) + ridgeNotchDepth;
+        const ridgeBeamTopY = ridgeSeatY;
+        const ridgeBeamCenterY = ridgeBeamTopY - BEAM_H / 2;
+        
+        const kingPostTopY = ridgeBeamCenterY - BEAM_H / 2;
+        const totalWidth = 2 * (post_center_x + plateWidth / 2 + roofOverhang);
+        
+        const postDistributionLength = D - (2 * roofOverhang);
+        const numPostsPerSideActual = Math.max(2, numberOfPostsPerSide || 2);
+        const postZPositions = [];
+        if (numPostsPerSideActual > 1) {
+            const postSpacing = postDistributionLength / (numPostsPerSideActual - 1);
+            for (let i = 0; i < numPostsPerSideActual; i++) {
+                postZPositions.push(-postDistributionLength / 2 + i * postSpacing);
+            }
+        } else {
+            postZPositions.push(0); 
+        }
+
+        const innerDepth = postZPositions.length > 1 ? postDistributionLength - POST_DIM : 0;
+        const side_x = totalWidth/2 + 1;
+        const front_z = D/2 + 1.5;
+
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, 0, 0), new THREE.Vector3(side_x, ridgeHeight, 0), 'First: ' + ridgeHeight.toFixed(2) + 'm', offset_x_pos, 0));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, 0, 0), new THREE.Vector3(side_x, plateTopY, 0), 'Traufe: ' + plateTopY.toFixed(2) + 'm', offset_x_pos, -0.75));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(-totalWidth / 2, -0.5, front_z), new THREE.Vector3(totalWidth / 2, -0.5, front_z), 'Breite: ' + totalWidth.toFixed(2) + 'm', offset_y_neg, 0.5));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, -0.5, -D / 2), new THREE.Vector3(side_x, -0.5, D / 2), 'Tiefe: ' + D.toFixed(2) + 'm', offset_y_neg, 0.5));
+        const innerWidth = W - POST_DIM;
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(-innerWidth / 2, 0, front_z), new THREE.Vector3(innerWidth / 2, 0, front_z), 'Breite Innen: ' + innerWidth.toFixed(2) + 'm', offset_z_pos, 0));
+        if (innerDepth > 0) dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, 0, -innerDepth/2), new THREE.Vector3(side_x, 0, innerDepth/2), 'Tiefe Innen: ' + innerDepth.toFixed(2) + 'm', offset_x_pos, 0.5));
+        const lowestClearance = plateTopY - BEAM_H;
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(0, 0, front_z), new THREE.Vector3(0, lowestClearance, front_z), 'Lichte Höhe tief: ' + lowestClearance.toFixed(2) + 'm', offset_x_pos, 0));
+        if (kingPostTopY > lowestClearance) dimensionsGroup.add(createDimensionLine(new THREE.Vector3(0, 0, front_z), new THREE.Vector3(0, kingPostTopY, front_z), 'Lichte Höhe First: ' + kingPostTopY.toFixed(2) + 'm', offset_x_pos, 0.5));
+
+    } else { // Pultdach / Flachdach
+        const high_post_x = -post_center_x; const low_post_x = post_center_x;
+        const slope = -tanA;
+        const high_purlin_ref_x = high_post_x - BEAM_W / 2;
+        const C = H - slope * high_purlin_ref_x;
+        const rafterUndersideY = (x) => slope * x + C;
+        const rafterSlopeHeight = RAFTER_H / cosA;
+        const y_top = (x) => rafterUndersideY(x) + rafterSlopeHeight;
+        const x_rafter_end_high = high_post_x - BEAM_W / 2 - roofOverhang;
+        const x_rafter_end_low = low_post_x + BEAM_W / 2 + roofOverhang;
+        const totalWidth = x_rafter_end_low - x_rafter_end_high;
+        const side_x = totalWidth/2 + 2;
+        const front_z = D/2 + 1.5;
+        const highestY = y_top(x_rafter_end_high);
+        const highEavesY = H;
+        const lowEavesY = rafterUndersideY(low_post_x - BEAM_W / 2);
+        
+        const numPosts = Math.max(2, numberOfPostsPerSide || 2);
+        const postDistributionLength = D - (2 * roofOverhang);
+        const zPositions = [];
+        if (numPosts > 1) {
+            const spacing = postDistributionLength / (numPosts - 1);
+            for (let i = 0; i < numPosts; i++) {
+                zPositions.push(-postDistributionLength / 2 + i * spacing);
+            }
+        } else {
+            zPositions.push(0);
+        }
+
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(x_rafter_end_high, 0, 0), new THREE.Vector3(x_rafter_end_high, highestY, 0), 'First: ' + highestY.toFixed(2) + 'm', offset_x_pos.clone().negate(), 0));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(high_post_x, 0, 0), new THREE.Vector3(high_post_x, highEavesY, 0), 'Traufe Hoch: ' + highEavesY.toFixed(2) + 'm', offset_x_pos.clone().negate(), -0.75));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(low_post_x, 0, 0), new THREE.Vector3(low_post_x, lowEavesY, 0), 'Traufe Tief: ' + lowEavesY.toFixed(2) + 'm', offset_x_pos, 0));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(x_rafter_end_high, -0.5, front_z), new THREE.Vector3(x_rafter_end_low, -0.5, front_z), 'Breite: ' + totalWidth.toFixed(2) + 'm', offset_y_neg, 0.5));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, -0.5, -D / 2), new THREE.Vector3(side_x, -0.5, D / 2), 'Tiefe: ' + D.toFixed(2) + 'm', offset_y_neg, 0.5));
+        const innerWidth = W - POST_DIM;
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(-innerWidth / 2, 0, front_z), new THREE.Vector3(innerWidth / 2, 0, front_z), 'Breite Innen: ' + innerWidth.toFixed(2) + 'm', offset_z_pos, 0));
+        const innerDepth = zPositions.length > 1 ? postDistributionLength - POST_DIM : 0;
+        if(innerDepth > 0) dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, 0, -innerDepth/2), new THREE.Vector3(side_x, 0, innerDepth/2), 'Tiefe Innen: ' + innerDepth.toFixed(2) + 'm', offset_x_pos, 0.5));
+        const zange_y = lowEavesY - TIE_BEAM_H / 2;
+        const lowestClearance = zange_y - TIE_BEAM_H / 2;
+        const highestClearance = rafterUndersideY(high_post_x + POST_DIM / 2);
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(low_post_x, 0, front_z), new THREE.Vector3(low_post_x, lowestClearance, front_z), 'Lichte Höhe tief: ' + lowestClearance.toFixed(2) + 'm', offset_x_pos, 0.5));
+        dimensionsGroup.add(createDimensionLine(new THREE.Vector3(high_post_x, 0, front_z), new THREE.Vector3(high_post_x, highestClearance, front_z), 'Lichte Höhe hoch: ' + highestClearance.toFixed(2) + 'm', offset_x_pos.clone().negate(), 0.5));
+    }
+    // --- END Dimensioning Code ---
+
+    if (roofType === 'Pultdach' || roofType === 'Flachdach') {
+        const rotatedPivot = new THREE.Group();
+        rotatedPivot.name = "rotatedPivot";
+        rotatedPivot.rotation.y = Math.PI;
+
+        const dims = group.getObjectByName("dimensionsGroup");
+        if (dims) {
+            group.remove(dims);
+        }
+        
+        while(group.children.length > 0) {
+            rotatedPivot.add(group.children[0]);
+        }
+
+        group.add(rotatedPivot);
+        if (dims) {
+            group.add(dims);
+        }
+    }
+
+    return group;
+  };
+    
+    return {
+        mainModelCode,
+        partsList: Array.from(parts.values()),
+    };
+}
