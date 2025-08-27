@@ -12,6 +12,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact"
   },
-  "include": ["src/server.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }
