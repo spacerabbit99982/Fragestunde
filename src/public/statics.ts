@@ -1,6 +1,5 @@
-
-import { PartInfo, RoofType } from './types';
-import { calculateStudLayout } from './drawingUtils';
+import { PartInfo, RoofType } from './types.js';
+import { calculateStudLayout } from './drawingUtils.js';
 
 export const calculateDeflection = (parts: PartInfo[], params: any): PartInfo[] => {
     const { W, D, roofOverhang, numberOfPostsPerSide, RAFTER_W, RAFTER_H, BEAM_W, BEAM_H, TIE_BEAM_H, roofType, roofPitch, altitude, POST_DIM, middlePurlin, STUD_D } = params;
