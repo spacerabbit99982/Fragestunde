@@ -1,4 +1,6 @@
-import express, { Request, Response } from 'express';
+
+// FIX: Aliased Request and Response to avoid conflict with DOM types.
+import express, { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { GoogleGenAI, Type } from "@google/genai";
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -22,7 +24,8 @@ app.use(express.static(publicPath));
 
 
 // API endpoint to handle the entire construction plan generation
-app.post('/api/generate', async (req: Request, res: Response) => {
+// FIX: Used aliased ExpressRequest and ExpressResponse types.
+app.post('/api/generate', async (req: ExpressRequest, res: ExpressResponse) => {
     try {
         const { buildingType, dimensions, roofType, roofOverhang, roofPitch } = req.body;
         
@@ -125,7 +128,8 @@ ANFORDERUNGEN:
             config: { responseMimeType: 'application/json', responseSchema: schema }
         });
 
-        let jsonString = configResult.text?.trim();
+        // FIX: Access .text property directly as it is guaranteed to be a string.
+        let jsonString = configResult.text.trim();
         if (!jsonString) throw new Error("Die KI hat eine leere Konfiguration zurückgegeben.");
         const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) jsonString = jsonMatch[1];
@@ -271,7 +275,8 @@ ABSOLUTE ANFORDERUNG AN DEN OUTPUT: Liefern Sie NUR den JavaScript-Code-Body. KE
 });
 
 // Fallback route to serve the main HTML file for client-side routing.
-app.get('*', (req: Request, res: Response) => {
+// FIX: Used aliased ExpressRequest and ExpressResponse types.
+app.get('*', (req: ExpressRequest, res: ExpressResponse) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
