@@ -128,9 +128,10 @@ ANFORDERUNGEN:
             config: { responseMimeType: 'application/json', responseSchema: schema }
         });
 
-        // FIX: Access .text property directly as it is guaranteed to be a string.
+        if (!configResult.text) {
+            throw new Error("Die KI hat eine leere Konfiguration zurückgegeben.");
+        }
         let jsonString = configResult.text.trim();
-        if (!jsonString) throw new Error("Die KI hat eine leere Konfiguration zurückgegeben.");
         const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) jsonString = jsonMatch[1];
         
