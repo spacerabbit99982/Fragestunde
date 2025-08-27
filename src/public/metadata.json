@@ -1,9 +1,0 @@
-
-{
-  "name": "Holzbau-Planer",
-  "description": "Eine App zur Planung von Holzkonstruktionen mit Materiallisten, 3D-Visualisierung und Angebotsanfrage.",
-  "prompt": "",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}
