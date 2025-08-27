@@ -1,5 +1,5 @@
 
-import { forwardRef, useState, useCallback, useRef, useEffect } from 'preact/compat';
+import { useState, useCallback, useRef, useEffect } from 'preact/compat';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
@@ -12,7 +12,8 @@ type XRHitTestSource = any;
 type XRFrame = any;
 
 // --- 3D Viewer Component ---
-export const Viewer = forwardRef(({ modelCode, backgroundModelCode, showDimensions, onError }: { modelCode: string | null, backgroundModelCode: string | null, showDimensions: boolean, onError: (error: string) => void }, ref) => {
+// FIX: Removed forwardRef as it was causing type errors and was not being used.
+export const Viewer = ({ modelCode, backgroundModelCode, showDimensions, onError }: { modelCode: string | null, backgroundModelCode: string | null, showDimensions: boolean, onError: (error: string) => void }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
     const sceneRef = useRef<THREE.Scene | null>(null);
@@ -635,4 +636,4 @@ export const Viewer = forwardRef(({ modelCode, backgroundModelCode, showDimensio
             </div>
         </div>
     );
-});
+};
