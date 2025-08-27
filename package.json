@@ -3,6 +3,7 @@
   "name": "holzbau-planer-service",
   "version": "1.0.0",
   "description": "Web service for Holzbau-Planer",
+  "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
