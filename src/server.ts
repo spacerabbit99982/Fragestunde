@@ -1,5 +1,6 @@
 
 
+
 import express, { Express, Request, Response } from 'express';
 import { GoogleGenAI, Type } from "@google/genai";
 import path from 'path';
@@ -131,7 +132,7 @@ ANFORDERUNGEN:
             config: { responseMimeType: 'application/json', responseSchema: schema }
         });
 
-        let jsonString = configResult.text.trim();
+        let jsonString = configResult.text?.trim();
         if (!jsonString) throw new Error("Die KI hat eine leere Konfiguration zurückgegeben.");
         const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) jsonString = jsonMatch[1];
