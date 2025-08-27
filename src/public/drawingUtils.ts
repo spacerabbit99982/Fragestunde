@@ -294,6 +294,7 @@ const createRafterDrawingInternal = (
     
     const drawingInfo = getDrawingInfo(drawingPolygon, RAFTER_W, dimensions, [], referenceLines);
     const finalBbox = drawingInfo.bbox;
+    // FIX: Add null check before pushing to dimensions array
     if (!drawingInfo.dimensions) {
         drawingInfo.dimensions = [];
     }
