@@ -1,7 +1,6 @@
-
 import * as THREE from 'three';
-import { RoofType, PartInfo, DrawingInfo, Dimension, Marker, ReferenceLine } from './types';
-import { getDrawingInfo, createBoxDrawingInfo, createMiteredBraceDrawingInfo, createCarportSatteldachRafterDrawing, createCarportPultdachRafterDrawing } from './drawingUtils';
+import { RoofType, PartInfo, DrawingInfo, Dimension, Marker, ReferenceLine } from './types.js';
+import { getDrawingInfo, createBoxDrawingInfo, createMiteredBraceDrawingInfo, createCarportSatteldachRafterDrawing, createCarportPultdachRafterDrawing } from './drawingUtils.js';
 
 /**
  * Erstellt den JavaScript-Code für das 3D-Modell sowie eine exakte Stückliste mit 2D-Zeichnungsinformationen.
@@ -688,7 +687,6 @@ export const generateConstructionPlan = (params: {
 
                 shapePoints.push(p_purlin_plumb_end_bottom);
                 shapePoints.push(p_purlin_seat_end);
-                shapePoints.push(p_purlin_seat_start);
                 shapePoints.push(p_purlin_plumb_start_bottom);
             }
             
@@ -814,8 +812,8 @@ export const generateConstructionPlan = (params: {
         lowPurlin.position.set(low_post_x, low_purlin_seat_y - BEAM_H / 2, 0);
         group.add(lowPurlin);
         
-        const crossMemberGeom = new THREE.BoxGeometry(W - POST_DIM, TIE_BEAM_H, BEAM_W);
-        const zange_y = low_purlin_seat_y - TIE_BEAM_H / 2;
+        const crossMemberGeom = new THREE.BoxGeometry(W - POST_DIM, BEAM_H, BEAM_W);
+        const zange_y = low_purlin_seat_y - BEAM_H / 2;
         
         zPositions.forEach(z => {
             const crossMember = new THREE.Mesh(crossMemberGeom.clone(), xAlignedElementMats);
@@ -839,7 +837,7 @@ export const generateConstructionPlan = (params: {
             middlePurlinBeam.position.set(middlePurlin_center_x, middlePurlin_center_y, 0);
             group.add(middlePurlinBeam);
 
-            const supportPostBottomY = zange_y + TIE_BEAM_H / 2;
+            const supportPostBottomY = zange_y + BEAM_H / 2;
             const supportPostTopY = middlePurlin_top_y - middlePurlin.h;
             const supportPostHeight = supportPostTopY - supportPostBottomY;
 
@@ -1015,6 +1013,10 @@ export const generateConstructionPlan = (params: {
         dimGroup.renderOrder = 999;
         return dimGroup;
     };
+
+    const offset_x_pos = new THREE.Vector3(1, 0, 0);
+    const offset_y_neg = new THREE.Vector3(0, -1, 0);
+    const offset_z_pos = new THREE.Vector3(0, 0, 1);
     
     if (roofType === 'Satteldach') {
         const plateTopY = H;
@@ -1097,8 +1099,8 @@ export const generateConstructionPlan = (params: {
         dimensionsGroup.add(createDimensionLine(new THREE.Vector3(-innerWidth / 2, 0, front_z), new THREE.Vector3(innerWidth / 2, 0, front_z), 'Breite Innen: ' + innerWidth.toFixed(2) + 'm', offset_z_pos, 0));
         const innerDepth = zPositions.length > 1 ? postDistributionLength - POST_DIM : 0;
         if(innerDepth > 0) dimensionsGroup.add(createDimensionLine(new THREE.Vector3(side_x, 0, -innerDepth/2), new THREE.Vector3(side_x, 0, innerDepth/2), 'Tiefe Innen: ' + innerDepth.toFixed(2) + 'm', offset_x_pos, 0.5));
-        const zange_y = lowEavesY - TIE_BEAM_H / 2;
-        const lowestClearance = zange_y - TIE_BEAM_H / 2;
+        const zange_y = lowEavesY - BEAM_H / 2;
+        const lowestClearance = zange_y - BEAM_H / 2;
         const highestClearance = rafterUndersideY(high_post_x + POST_DIM / 2);
         dimensionsGroup.add(createDimensionLine(new THREE.Vector3(low_post_x, 0, front_z), new THREE.Vector3(low_post_x, lowestClearance, front_z), 'Lichte Höhe tief: ' + lowestClearance.toFixed(2) + 'm', offset_x_pos, 0.5));
         dimensionsGroup.add(createDimensionLine(new THREE.Vector3(high_post_x, 0, front_z), new THREE.Vector3(high_post_x, highestClearance, front_z), 'Lichte Höhe hoch: ' + highestClearance.toFixed(2) + 'm', offset_x_pos.clone().negate(), 0.5));
