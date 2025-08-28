@@ -1,10 +1,11 @@
 services:
   - type: web
-    name: dein-anwendungsname
+    name: Holzbauplaner
     env: node
     plan: free
     buildCommand: npm install
-    startCommand: node dein-anwendungs-start-skript.js
+    startCommand: index.html
     repo: https://github.com/spacerabbit99982/Fragestunde.git
     branch: main
+
 
