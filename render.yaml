@@ -4,8 +4,9 @@ services:
     env: node
     plan: free
     buildCommand: npm install
-    startCommand: index.html
+    startCommand: index.tsx
     repo: https://github.com/spacerabbit99982/Fragestunde.git
     branch: main
+
 
 
