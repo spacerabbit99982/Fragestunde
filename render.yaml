@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: dein-anwendungsname
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node dein-anwendungs-start-skript.js
+    repo: https://github.com/DEIN-BENUTZERNAME/DEIN-REPOSITORIUM.git
+    branch: main
